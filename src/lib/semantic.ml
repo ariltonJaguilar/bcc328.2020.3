@@ -75,7 +75,7 @@ and check_assign_exp env pos a b =
 
 and check_var env (pos, va) =
   match va with
-  | A.SimpleVar sym -> varLook env.venv sym pos
+  | A.SimpleVar sym -> varlook env.venv sym pos
   | _ -> Error.fatal "unimplemented"
 
 and check_exp_let env pos tref decs body =
