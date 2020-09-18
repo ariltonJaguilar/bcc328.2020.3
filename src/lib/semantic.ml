@@ -63,46 +63,46 @@ let rec check_exp env (pos, (exp, tref)) =
   | A.RealExp _ -> set tref T.REAL
   | A.StringExp _ -> set tref T.STRING
   | A.LetExp (decs, body) -> check_exp_let env pos tref decs body
-  | A.BinaryExp (leftexp, opr, rightexp) -> check_exp_bin env pos leftexp opr rightexp
-  | A.NegativeExp (exp) -> check_exp_negation env pos exp
-  | A.ExpSeq seqexp -> check_exp_sequence env pos seqexp
-  | A.IfExp (cond, ex, oth) -> check_exp_conditional env pos cond ex oth
-  | A.WhileExp (cond, ex) -> check_exp_while env pos cond ex
-  | A.BreakExp -> check_exp_break env pos 
+  | A.BinaryExp (leftexp, opr, rightexp) -> check_exp_bin env pos tref leftexp opr rightexp
+  | A.NegativeExp (exp) -> check_exp_negation env pos tref exp
+  | A.ExpSeq seqexp -> check_exp_sequence env pos tref seqexp
+  | A.IfExp (cond, ex, oth) -> check_exp_conditional env pos tref cond ex oth
+  | A.WhileExp (cond, ex) -> check_exp_while env pos tref cond ex
+  | A.BreakExp -> check_exp_break env pos tref 
   | _ -> Error.fatal "unimplemented"
 
 (* Checking break condition *)
 
 and check_exp_break env pos =
   match env.inloop with 
-    | true -> T.VOID 
+    | true -> set tref T.VOID  
     | _ -> Error.error pos "breaking outside a conditional loop"
 
 (* Checking loop expressions *)
 
-and check_exp_while env pos cond exec =
+and check_exp_while env pos tref cond exec =
   let env' = {env with inloop = true} in
-  ignore(check_exp env' cond); ignore(check_exp env' exec); T.VOID
+  ignore(check_exp env' cond); ignore(check_exp env' exec); set tref T.VOID
 
 (* Checking conditional expressions *)
 
-and check_exp_conditional env pos cond exec oth =
+and check_exp_conditional env pos tref cond exec oth =
   let cond' = check_exp env cond in
     match cond' with
       | T.BOOL -> let exec' = check_exp env exec in
         match oth with 
           | Some lexp -> let oth' = check_exp env lexp in
             compatible exec' oth' pos ; 
-            exec'
-          | None -> T.VOID
+            set tref exec'
+          | None -> set tref T.VOID
       | _ -> type_mismatch pos T.BOOL cond'
 
 
 
 (* Checking sequence expressions *)
 
-and check_exp_sequence env pos seqexp =
-  let seqexp' = breakexp_loop env seqexp in seqexp'
+and check_exp_sequence env pos tref seqexp =
+  let seqexp' = breakexp_loop env seqexp in set tref seqexp'
 
 and breakexp_loop env seqexp =
   match seqexp with
@@ -112,37 +112,37 @@ and breakexp_loop env seqexp =
 
 (* Checking negation operators *)
 
-and check_exp_negation env pos exp = 
+and check_exp_negation env pos tref exp = 
   let exp' = check_exp env exp in
     match exp' with
-      | T.INT | T.REAL -> exp'
+      | T.INT | T.REAL -> set tref exp'
       | _ -> type_mismatch pos T.REAL exp'
 
 (* Checking binary operators *)
 
-and check_exp_bin env pos leftexp opr rightexp =
+and check_exp_bin env pos tref leftexp opr rightexp =
   let leftexp' = check_exp env leftexp in
   let rightexp' = check_exp env rightexp in
     match opr with
       | A.Plus | A.Minus | A.Div | A.Times | A.Mod | A.Power ->
         begin match leftexp', rightexp' with
-          | T.INT, T.REAL | T.REAL, T.INT | T.REAL, T.REAL  -> T.REAL
-          | T.INT, T.INT                                    -> T.INT
+          | T.INT, T.REAL | T.REAL, T.INT | T.REAL, T.REAL  -> set tref  T.REAL
+          | T.INT, T.INT                                    -> set tref T.INT
           | _                                               -> type_mismatch pos leftexp' rightexp'
         end 
       (* equality operators *)
-      | A.Equal | A.NotEqual -> compatible leftexp' rightexp' pos; T.BOOL
+      | A.Equal | A.NotEqual -> compatible leftexp' rightexp' pos; set tref T.BOOL
       (* relational operators *)
       | A.GreaterThan | A.LowerThan | A.GreaterEqual | A.LowerEqual ->
         begin match leftexp' with
-          | T.INT    -> (match rightexp' with T.INT    -> T.BOOL | _ -> type_mismatch pos T.INT rightexp')
-          | T.REAL   -> (match rightexp' with T.REAL   -> T.BOOL | _ -> type_mismatch pos T.REAL rightexp')
-          | T.STRING -> (match rightexp' with T.STRING -> T.BOOL | _ -> type_mismatch pos T.STRING rightexp')
+          | T.INT    -> (match rightexp' with T.INT    -> set tref T.BOOL | _ -> type_mismatch pos T.INT rightexp')
+          | T.REAL   -> (match rightexp' with T.REAL   -> set tref T.BOOL | _ -> type_mismatch pos T.REAL rightexp')
+          | T.STRING -> (match rightexp' with T.STRING -> set tref T.BOOL | _ -> type_mismatch pos T.STRING rightexp')
         end 
       (* logical operators *)
       | A.And | A.Or ->
         begin match leftexp', rightexp' with
-          | T.BOOL, T.BOOL -> T.BOOL
+          | T.BOOL, T.BOOL -> set tref T.BOOL
           | _ -> (match leftexp' with  T.BOOL -> type_mismatch pos T.BOOL rightexp' | _ -> type_mismatch pos T.BOOL leftexp')
         end
       | _ -> Error.fatal "unimplemented"
