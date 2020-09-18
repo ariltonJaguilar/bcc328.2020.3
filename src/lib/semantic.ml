@@ -73,7 +73,7 @@ let rec check_exp env (pos, (exp, tref)) =
 
 (* Checking break condition *)
 
-and check_exp_break env pos =
+and check_exp_break env pos tref =
   match env.inloop with 
     | true -> set tref T.VOID  
     | _ -> Error.error pos "breaking outside a conditional loop"
